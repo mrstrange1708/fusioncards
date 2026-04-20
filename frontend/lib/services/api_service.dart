@@ -1,20 +1,12 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/expense.dart';
 
 class ApiService {
-  // Automatically select the correct URL based on the platform
+  // Use environment variable for the backend URL
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api';
-    } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api';
-    } else {
-      // iOS, macOS, Windows, Linux
-      return 'http://localhost:3000/api';
-    }
+    return dotenv.env['BACKEND_URL'] ?? 'http://localhost:3000/api';
   }
 
   // Add a new expense

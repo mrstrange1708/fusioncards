@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class Expense {
   final int? id;
   final double amount;
@@ -48,15 +50,15 @@ class Expense {
     'Other',
   ];
 
-  static const Map<String, String> categoryIcons = {
-    'Food': '🍔',
-    'Travel': '✈️',
-    'Shopping': '🛍️',
-    'Entertainment': '🎬',
-    'Bills': '📄',
-    'Health': '💊',
-    'Education': '📚',
-    'Other': '📦',
+  static const Map<String, IconData> categoryIcons = {
+    'Food': Icons.fastfood_rounded,
+    'Travel': Icons.flight_takeoff_rounded,
+    'Shopping': Icons.shopping_bag_rounded,
+    'Entertainment': Icons.movie_rounded,
+    'Bills': Icons.receipt_long_rounded,
+    'Health': Icons.medical_services_rounded,
+    'Education': Icons.school_rounded,
+    'Other': Icons.category_rounded,
   };
 }
 

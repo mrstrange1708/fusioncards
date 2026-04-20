@@ -127,6 +127,19 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                     );
                   }
 
+                  if (provider.error != null) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          'Connection Error:\n${provider.error}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+                        ),
+                      ),
+                    );
+                  }
+
                   if (provider.expenses.isEmpty) {
                     return _buildEmptyState();
                   }
@@ -223,7 +236,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   }
 
   Widget _buildExpenseCard(Expense expense, ExpenseProvider provider) {
-    final emoji = Expense.categoryIcons[expense.category] ?? '📦';
+    final iconData = Expense.categoryIcons[expense.category] ?? Icons.category_rounded;
 
     return Dismissible(
       key: Key(expense.id.toString()),
@@ -299,7 +312,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
-                child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                child: Icon(iconData, color: const Color(0xFF6C63FF), size: 20),
               ),
             ),
             const SizedBox(width: 14),
