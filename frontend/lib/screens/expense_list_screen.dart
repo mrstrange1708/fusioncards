@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -11,15 +12,32 @@ class ExpenseListScreen extends StatefulWidget {
   State<ExpenseListScreen> createState() => _ExpenseListScreenState();
 }
 
-class _ExpenseListScreenState extends State<ExpenseListScreen> {
+class _ExpenseListScreenState extends State<ExpenseListScreen>
+    with SingleTickerProviderStateMixin {
   bool _groupByDate = true; // true = date, false = category
+  late AnimationController _animController;
 
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ExpenseProvider>(context, listen: false).loadExpenses();
+      Provider.of<ExpenseProvider>(context, listen: false)
+          .loadExpenses()
+          .then((_) {
+        if (mounted) _animController.forward();
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
   Map<String, List<Expense>> _groupExpenses(List<Expense> expenses) {
@@ -36,7 +54,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     return grouped;
   }
 
-  String _formatGroupHeader(String key) {
+  Widget _buildGroupHeader(String key) {
     if (_groupByDate) {
       final date = DateTime.parse(key);
       final now = DateTime.now();
@@ -44,11 +62,39 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       final yesterday = today.subtract(const Duration(days: 1));
       final dateOnly = DateTime(date.year, date.month, date.day);
 
-      if (dateOnly == today) return 'Today';
-      if (dateOnly == yesterday) return 'Yesterday';
-      return DateFormat('EEE, MMM d, yyyy').format(date);
+      String dateText;
+      if (dateOnly == today) {
+        dateText = 'Today';
+      } else if (dateOnly == yesterday) {
+        dateText = 'Yesterday';
+      } else {
+        dateText = DateFormat('EEE, MMM d, yyyy').format(date);
+      }
+      return Text(
+        dateText,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.white.withOpacity(0.6),
+        ),
+      );
     }
-    return '${Expense.categoryIcons[key] ?? "📦"} $key';
+
+    final iconData = Expense.categoryIcons[key] ?? Icons.category_rounded;
+    return Row(
+      children: [
+        Icon(iconData, size: 16, color: const Color(0xFF4ADE80)),
+        const SizedBox(width: 6),
+        Text(
+          key,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withOpacity(0.8),
+          ),
+        ),
+      ],
+    );
   }
 
   double _groupTotal(List<Expense> expenses) {
@@ -58,7 +104,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F1A),
+      backgroundColor: Colors.black, // Pure black
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,22 +127,35 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                   // Group toggle
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E2C),
+                      color: Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
-                    child: Row(
-                      children: [
-                        _buildToggleButton(
-                          icon: Icons.calendar_today_rounded,
-                          isActive: _groupByDate,
-                          onTap: () => setState(() => _groupByDate = true),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                        child: Row(
+                          children: [
+                            _buildToggleButton(
+                              icon: Icons.calendar_today_rounded,
+                              isActive: _groupByDate,
+                              onTap: () {
+                                setState(() => _groupByDate = true);
+                                _animController.forward(from: 0);
+                              },
+                            ),
+                            _buildToggleButton(
+                              icon: Icons.category_rounded,
+                              isActive: !_groupByDate,
+                              onTap: () {
+                                setState(() => _groupByDate = false);
+                                _animController.forward(from: 0);
+                              },
+                            ),
+                          ],
                         ),
-                        _buildToggleButton(
-                          icon: Icons.category_rounded,
-                          isActive: !_groupByDate,
-                          onTap: () => setState(() => _groupByDate = false),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
@@ -122,7 +181,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                   if (provider.isLoading) {
                     return const Center(
                       child: CircularProgressIndicator(
-                        color: Color(0xFF6C63FF),
+                        color: Color(0xFF4ADE80),
                       ),
                     );
                   }
@@ -134,7 +193,8 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                         child: Text(
                           'Connection Error:\n${provider.error}',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+                          style: const TextStyle(
+                              color: Colors.redAccent, fontSize: 14),
                         ),
                       ),
                     );
@@ -148,8 +208,8 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                   final keys = grouped.keys.toList();
 
                   return RefreshIndicator(
-                    color: const Color(0xFF6C63FF),
-                    backgroundColor: const Color(0xFF1E1E2C),
+                    color: const Color(0xFF4ADE80),
+                    backgroundColor: Colors.white.withOpacity(0.1),
                     onRefresh: provider.loadExpenses,
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -159,46 +219,70 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                         final expenses = grouped[key]!;
                         final total = _groupTotal(expenses);
 
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Group header
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    _formatGroupHeader(key),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white.withOpacity(0.6),
-                                    ),
+                        final startDelay = (index * 0.1).clamp(0.0, 1.0);
+                        final endDelay = (startDelay + 0.4).clamp(0.0, 1.0);
+
+                        final slideAnim = Tween<Offset>(
+                          begin: const Offset(0, 0.2),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: _animController,
+                            curve: Interval(startDelay, endDelay,
+                                curve: Curves.easeOutCubic),
+                          ),
+                        );
+
+                        final fadeAnim = Tween<double>(
+                          begin: 0.0,
+                          end: 1.0,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: _animController,
+                            curve: Interval(startDelay, endDelay,
+                                curve: Curves.easeIn),
+                          ),
+                        );
+
+                        return FadeTransition(
+                          opacity: fadeAnim,
+                          child: SlideTransition(
+                            position: slideAnim,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Group header
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      _buildGroupHeader(key),
+                                      Text(
+                                        '₹${NumberFormat('#,##,###.##').format(total)}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF4ADE80),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    '₹${NumberFormat('#,##,###.##').format(total)}',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF6C63FF),
-                                    ),
+                                ),
+                                // Expense cards
+                                ...expenses.map((expense) => _buildExpenseCard(
+                                      expense,
+                                      provider,
+                                    )),
+                                if (index < keys.length - 1)
+                                  Divider(
+                                    color: Colors.white.withOpacity(0.05),
+                                    height: 24,
                                   ),
-                                ],
-                              ),
+                              ],
                             ),
-                            // Expense cards
-                            ...expenses.map((expense) => _buildExpenseCard(
-                                  expense,
-                                  provider,
-                                )),
-                            if (index < keys.length - 1)
-                              Divider(
-                                color: Colors.white.withOpacity(0.05),
-                                height: 24,
-                              ),
-                          ],
+                          ),
                         );
                       },
                     ),
@@ -223,12 +307,14 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF6C63FF) : Colors.transparent,
+          color: isActive
+              ? const Color(0xFF4ADE80).withOpacity(0.2)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
           icon,
-          color: isActive ? Colors.white : Colors.white.withOpacity(0.4),
+          color: isActive ? const Color(0xFF4ADE80) : Colors.white.withOpacity(0.4),
           size: 18,
         ),
       ),
@@ -293,120 +379,151 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E2C),
+          color: Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withOpacity(0.1),
           ),
         ),
-        child: Row(
-          children: [
-            // Category icon
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFF6C63FF).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Icon(iconData, color: const Color(0xFF6C63FF), size: 20),
-              ),
-            ),
-            const SizedBox(width: 14),
-            // Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
-                  Text(
-                    expense.category,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
+                  // Category icon
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4ADE80).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Icon(iconData, color: const Color(0xFF4ADE80), size: 20),
                     ),
                   ),
-                  if (expense.note.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        expense.note,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 12,
+                  const SizedBox(width: 14),
+                  // Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          expense.category,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        if (expense.note.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              expense.note,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.4),
+                                fontSize: 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
                     ),
+                  ),
+                  // Amount & date
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '₹${NumberFormat('#,##,###.##').format(expense.amount)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        DateFormat('MMM d').format(expense.date),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.3),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            // Amount & date
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '₹${NumberFormat('#,##,###.##').format(expense.amount)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  DateFormat('MMM d').format(expense.date),
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.3),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E2C),
-              shape: BoxShape.circle,
-              border: Border.all(
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: child,
+          ),
+        );
+      },
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(100),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Icon(Icons.money_off_rounded, size: 48, color: Color(0xFF4ADE80)),
+                  ),
+                ),
               ),
             ),
-            child: const Text('💸', style: TextStyle(fontSize: 48)),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'No expenses yet',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 20),
+            const Text(
+              'No expenses yet',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Start tracking by adding your first expense',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.4),
-              fontSize: 14,
+            const SizedBox(height: 8),
+            Text(
+              'Start tracking by adding your first expense',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.4),
+                fontSize: 14,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
