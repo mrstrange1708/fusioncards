@@ -17,13 +17,14 @@ class _InsightsScreenState extends State<InsightsScreen>
     with SingleTickerProviderStateMixin {
   String _period = 'month';
   late AnimationController _animController;
+  int touchedIndex = -1; // Added for PieChart interaction
 
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1500), // Longer duration for full spin
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,7 +49,7 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   static const _catColors = <String, Color>{
-    'Food': Color(0xFF4ADE80), // Green accents instead of varied colors for better theme fit
+    'Food': Color(0xFF4ADE80), 
     'Travel': Color(0xFF34D399),
     'Shopping': Color(0xFF10B981),
     'Entertainment': Color(0xFF059669),
@@ -266,7 +267,7 @@ class _InsightsScreenState extends State<InsightsScreen>
       child: ScaleTransition(
         scale: scaleAnim,
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
@@ -282,20 +283,27 @@ class _InsightsScreenState extends State<InsightsScreen>
                 children: [
                   Icon(icon, color: color, size: 20),
                   const SizedBox(height: 10),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 11,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ],
@@ -310,13 +318,13 @@ class _InsightsScreenState extends State<InsightsScreen>
   Widget _buildPieChart(AggregationData agg) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1500),
       curve: Curves.elasticOut,
       builder: (context, value, child) {
         return Transform.scale(
           scale: value,
           child: Transform.rotate(
-            angle: (1.0 - value) * 1.0, // Slight spin
+            angle: (1.0 - value) * 6.28319, // Full 360 degree spin (2 * Pi)
             child: Opacity(
               opacity: value.clamp(0.0, 1.0),
               child: child,
@@ -325,7 +333,7 @@ class _InsightsScreenState extends State<InsightsScreen>
         );
       },
       child: Container(
-        height: 200,
+        height: 240, // Slightly taller to accommodate touched sections
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
@@ -338,25 +346,44 @@ class _InsightsScreenState extends State<InsightsScreen>
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: PieChart(
               PieChartData(
+                pieTouchData: PieTouchData(
+                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                    setState(() {
+                      if (!event.isInterestedForInteractions ||
+                          pieTouchResponse == null ||
+                          pieTouchResponse.touchedSection == null) {
+                        touchedIndex = -1;
+                        return;
+                      }
+                      touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                    });
+                  },
+                ),
                 sectionsSpace: 2,
                 centerSpaceRadius: 40,
-                sections: agg.categoryBreakdown.map((cat) {
+                sections: agg.categoryBreakdown.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final cat = entry.value;
                   final pct = agg.totalSpend > 0 ? (cat.total / agg.totalSpend * 100) : 0.0;
                   final color = _catColors[cat.category] ?? const Color(0xFF9CA3AF);
+                  final isTouched = i == touchedIndex;
+                  final radius = isTouched ? 60.0 : 50.0;
+                  
                   return PieChartSectionData(
                     value: cat.total,
                     color: color,
-                    radius: 50,
-                    title: '${pct.toStringAsFixed(0)}%',
-                    titleStyle: const TextStyle(
-                      fontSize: 11,
+                    radius: radius,
+                    title: isTouched ? '${cat.category}\n${pct.toStringAsFixed(0)}%' : '${pct.toStringAsFixed(0)}%',
+                    titlePositionPercentageOffset: isTouched ? 1.2 : 0.5,
+                    titleStyle: TextStyle(
+                      fontSize: isTouched ? 12 : 11,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black, // Dark text on bright pie slice
+                      color: isTouched ? Colors.white : Colors.black, // White text when popped out
                     ),
                   );
                 }).toList(),
               ),
-              swapAnimationDuration: const Duration(milliseconds: 800),
+              swapAnimationDuration: const Duration(milliseconds: 300),
               swapAnimationCurve: Curves.easeInOutCubic,
             ),
           ),

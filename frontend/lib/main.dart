@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -67,29 +68,35 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black, // Pure black
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E),
+          color: Colors.white.withOpacity(0.02),
           border: Border(
             top: BorderSide(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withOpacity(0.1),
             ),
           ),
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, Icons.add_circle_outline_rounded, Icons.add_circle_rounded, 'Add'),
-                _buildNavItem(1, Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Expenses'),
-                _buildNavItem(2, Icons.insights_outlined, Icons.insights_rounded, 'Insights'),
-              ],
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(0, Icons.add_circle_outline_rounded, Icons.add_circle_rounded, 'Add'),
+                    _buildNavItem(1, Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Expenses'),
+                    _buildNavItem(2, Icons.insights_outlined, Icons.insights_rounded, 'Insights'),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -116,7 +123,7 @@ class _MainNavigationState extends State<MainNavigation> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF6C63FF).withOpacity(0.15) : Colors.transparent,
+          color: isActive ? const Color(0xFF4ADE80).withOpacity(0.15) : Colors.transparent, // Green accent
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -124,14 +131,14 @@ class _MainNavigationState extends State<MainNavigation> {
           children: [
             Icon(
               isActive ? activeIcon : icon,
-              color: isActive ? const Color(0xFF6C63FF) : Colors.white.withOpacity(0.4),
+              color: isActive ? const Color(0xFF4ADE80) : Colors.white.withOpacity(0.4),
               size: 24,
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                color: isActive ? const Color(0xFF6C63FF) : Colors.white.withOpacity(0.4),
+                color: isActive ? const Color(0xFF4ADE80) : Colors.white.withOpacity(0.4),
                 fontSize: 11,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
               ),
