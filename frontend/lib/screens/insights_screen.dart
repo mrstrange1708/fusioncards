@@ -40,9 +40,10 @@ class _InsightsScreenState extends State<InsightsScreen>
 
   void _loadData() {
     final provider = Provider.of<ExpenseProvider>(context, listen: false);
+    _animController.reset();
     provider.loadAggregation(period: _period).then((_) {
       if (mounted) {
-        _animController.forward(from: 0);
+        _animController.forward();
       }
     });
     provider.loadInsights();
@@ -158,25 +159,27 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildPeriodToggle() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
           child: Row(
             children: ['week', 'month'].map((p) {
               final active = _period == p;
               return Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    setState(() => _period = p);
-                    _loadData();
+                    if (_period != p) {
+                      setState(() => _period = p);
+                      _loadData();
+                    }
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -223,7 +226,7 @@ class _InsightsScreenState extends State<InsightsScreen>
               0.0,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: _summaryCard(
               'Transactions',
@@ -233,7 +236,7 @@ class _InsightsScreenState extends State<InsightsScreen>
               0.1,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: _summaryCard(
               'Daily Avg',
@@ -266,25 +269,26 @@ class _InsightsScreenState extends State<InsightsScreen>
       opacity: fadeAnim,
       child: ScaleTransition(
         scale: scaleAnim,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, color: color, size: 20),
-                  const SizedBox(height: 10),
+                  Icon(icon, color: color, size: 24),
+                  const SizedBox(height: 12),
                   FittedBox(
                     fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       value,
                       style: const TextStyle(
@@ -294,15 +298,17 @@ class _InsightsScreenState extends State<InsightsScreen>
                       ),
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   FittedBox(
                     fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
                     child: Text(
                       label,
                       maxLines: 1,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.5),
                         fontSize: 11,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -316,34 +322,39 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildPieChart(AggregationData agg) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 1500),
-      curve: Curves.elasticOut,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Transform.rotate(
-            angle: (1.0 - value) * 6.28319, // Full 360 degree spin (2 * Pi)
-            child: Opacity(
-              opacity: value.clamp(0.0, 1.0),
-              child: child,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        height: 240, // Slightly taller to accommodate touched sections
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
-        ),
+    final slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _animController,
+        curve: const Interval(0.2, 0.5, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    final fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animController,
+        curve: const Interval(0.2, 0.5, curve: Curves.easeIn),
+      ),
+    );
+
+    return FadeTransition(
+      opacity: fadeAnim,
+      child: SlideTransition(
+        position: slideAnim,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              height: 240,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
             child: PieChart(
               PieChartData(
                 pieTouchData: PieTouchData(
@@ -378,7 +389,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                     titleStyle: TextStyle(
                       fontSize: isTouched ? 12 : 11,
                       fontWeight: FontWeight.bold,
-                      color: isTouched ? Colors.white : Colors.black, // White text when popped out
+                      color: isTouched ? Colors.white : Colors.black,
                     ),
                   );
                 }).toList(),
@@ -427,16 +438,16 @@ class _InsightsScreenState extends State<InsightsScreen>
             position: slideAnim,
             child: Container(
               margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                  child: Padding(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
                     padding: const EdgeInsets.all(14),
                     child: Column(
                       children: [
@@ -465,13 +476,18 @@ class _InsightsScreenState extends State<InsightsScreen>
                         const SizedBox(height: 8),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
-                          child: TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0.0, end: pct),
-                            duration: const Duration(milliseconds: 1000),
-                            curve: Curves.easeOutCubic,
-                            builder: (context, value, _) {
+                          child: AnimatedBuilder(
+                            animation: _animController,
+                            builder: (context, child) {
+                              // We use the animation controller for the progress bars too, starting after the initial fade
+                              final progressAnim = Tween<double>(begin: 0.0, end: pct).animate(
+                                CurvedAnimation(
+                                  parent: _animController,
+                                  curve: Interval(startDelay, 1.0, curve: Curves.easeOutCubic),
+                                ),
+                              );
                               return LinearProgressIndicator(
-                                value: value,
+                                value: progressAnim.value,
                                 backgroundColor: Colors.white.withOpacity(0.1),
                                 valueColor: AlwaysStoppedAnimation(color),
                                 minHeight: 4,
@@ -518,16 +534,16 @@ class _InsightsScreenState extends State<InsightsScreen>
     }
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Padding(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderColor),
+            ),
             padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,19 +610,19 @@ class _InsightsScreenState extends State<InsightsScreen>
         child: Center(
           child: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(100),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(100),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                      ),
+                    ),
                     child: const Padding(
                       padding: EdgeInsets.all(8.0),
                       child: Icon(Icons.bar_chart_rounded, size: 48, color: Color(0xFF4ADE80)),
