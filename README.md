@@ -1,10 +1,10 @@
-# 💰 Smart Expense Tracker with Insights
+# Smart Expense Tracker with Insights
 
 A mobile application built with **Flutter** (frontend) and **Node.js/Express** (backend) that allows users to track their expenses and view smart spending insights.
 
 ---
 
-## 📐 Architecture
+## Architecture
 
 ```
 FusionCard/
@@ -36,7 +36,7 @@ FusionCard/
 └── README.md
 ```
 
-## 🧠 Approach
+## Approach
 
 ### Backend
 - **Node.js + Express** REST API with clean MVC architecture
@@ -54,7 +54,7 @@ FusionCard/
 
 ---
 
-## 🔌 Backend Choice: Node.js + PostgreSQL
+## Backend Choice: Node.js + PostgreSQL
 
 | Decision | Reasoning |
 |----------|-----------|
@@ -65,7 +65,7 @@ FusionCard/
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -78,7 +78,7 @@ FusionCard/
 
 ---
 
-## 🧠 Smart Insights
+## Smart Insights
 
 The insight engine computes 5 types of analytics:
 
@@ -90,7 +90,7 @@ The insight engine computes 5 types of analytics:
 
 ---
 
-## 🚀 Setup & Running
+## Setup & Running
 
 ### Backend
 
@@ -117,7 +117,7 @@ flutter run
 
 ---
 
-## 📱 Screens
+## Screens
 
 ### 1. Add Expense
 - Numeric amount input with ₹ prefix
@@ -140,7 +140,7 @@ flutter run
 
 ---
 
-## ⚠️ Assumptions & Trade-offs
+## Assumptions & Trade-offs
 
 1. **No authentication** — Single-user app (hackathon scope)
 2. **Currency** — ₹ (INR) hardcoded for display
@@ -151,7 +151,7 @@ flutter run
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
